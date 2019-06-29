@@ -1,5 +1,6 @@
-import {videoList} from "../db";
 import routes from "../routes";
+import Video from "../models/Video";
+
 /*
 
   < Global하게 변수를 사용하는 방법 >
@@ -22,7 +23,15 @@ import routes from "../routes";
      - http://expressjs.com/en/api.html#res.locals
 
 */
-export const home = (req, res) => res.render("home",  { pageTitle: "Home",videoList });
+export const home = async (req, res) => {
+  try{
+    const videos = await Video.find({}).sort({ _id: -1 });
+    res.render("home",  { pageTitle: "Home" ,videos});
+  }catch(error){
+    console.log(error);
+    res.render("home",  { pageTitle: "Home" ,videos:[]});
+  }
+}
 
 /*
 
@@ -42,23 +51,93 @@ export const home = (req, res) => res.render("home",  { pageTitle: "Home",videoL
      - https://stackoverflow.com/questions/6912584/how-to-get-get-query-string-variables-in-express-js-on-node-js
 
 */
-export const search = (req, res) =>{
+export const search = async (req, res) =>{
   const {
     query : {term: searchingBy}
   } = req;
-  res.render("search",{pageTitle:"Search", searchingBy, videoList})
+  let videos = [];
+  try{
+    videos = await Video.find({
+      title:{$regex: searchingBy, $options: "i"}
+    });
+  } catch(error){
+    console.log(error);
+  }
+  res.render("search",{pageTitle:"Search", searchingBy, videos})
 }
 
 export const getUpload = (req, res) => res.render("upload", {pageTitle: "Upload"});
-export const postUpload = (req, res) => {
+export const postUpload = async (req, res) => {
+  /*
+
+  < ES 6 이전 문법 >
+
+    const title = req.body.title;
+    const description = req.body.description;
+    const path = req.body.file.path
+
+  */
   const {
-    body:{file,title,description}
+    body: { title, description },
+    file: { path }
   } = req;
-  res.redirect(routes.videoDetail(123213));
+
+  const newVideo = await Video.create({
+     fileUrl: path,
+     title,
+     description
+   });
+   res.redirect(routes.videoDetail(newVideo.id));
+
 }
 
 
 export const videos = (req, res) => res.render("videos", { pageTitle: "Videos" });
-export const videoDetail = (req, res) => res.render("videoDetail", { pageTitle: "Video Detail" });
-export const editVideo = (req, res) => res.render("editVideo", { pageTitle: "Edit Video" });
-export const deleteVideo = (req, res) => res.render("deleteVideo", { pageTitle: "Delete Video" });
+export const videoDetail = async (req, res) => {
+  const {
+    params: { id }
+  } = req;
+  try {
+    const video = await Video.findById(id);
+    res.render("videoDetail", { pageTitle: video.title, video });
+  } catch (error) {
+    res.redirect(routes.home);
+  }
+};
+
+
+export const getEditVideo = async(req, res) => {
+  const {
+    params : {id}
+  } = req;
+  try{
+    const video = await Video.findById(id);
+    res.render("editVideo", {pageTitle:`Edit ${video.title}`, video});
+  } catch (error){
+    res.redirect(routes.home);
+  }
+}
+export const postEditVideo = async(req, res) =>{
+  const{
+    params:{id},
+    body:{title, description}
+  } = req;
+  try{
+    await Video.findOneAndUpdate({_id:id}, {title, description});
+    res.redirect(routes.videoDetail(id));
+  } catch(error){
+    res.redirect(routes.home);
+  }
+}
+
+export const deleteVideo = async (req, res) => {
+  const {
+    params: { id }
+  } = req;
+  try {
+    await Video.findOneAndRemove({ _id: id });
+  } catch (error) {
+    console.log(error);
+  }
+  res.redirect(routes.home);
+};

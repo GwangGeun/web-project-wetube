@@ -4,6 +4,11 @@ import express from "express";
 import morgan from "morgan";
 // helmet (보안) 공식 홈페이지 : https://www.npmjs.com/package/helmet
 import helmet from "helmet";
+import passport from "passport";
+import mongoose from "mongoose";
+import session from "express-session";
+import MongoStore from "connect-mongo";
+
 // cookieParser (쿠키) 공식 홈페이지 : https://www.npmjs.com/package/cookie-parser
 import cookieParser from "cookie-parser";
 // bodyParser (post 요청) 공식 홈페이지 : https://www.npmjs.com/package/body-parser
@@ -14,10 +19,16 @@ import userRouter from "./routers/userRouter";
 import videoRouter from "./routers/videoRouter";
 import routes from "./routes";
 import { localsMiddleware } from "./middlewares";
-
+import "./passport";
 
 const app = express();
+
+const CokieStore = MongoStore(session);
+
 app.set("view engine", "pug");
+app.use("/uploads",express.static("uploads"));
+app.use("/static", express.static("static"));
+
 /*
 
 < middleware 사용법 >
@@ -56,6 +67,18 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 // 접속 log 를 남겨주는 설정 ( log 를 남기는 방법 및 테마에 대한 여러 설정들이 있음 )
 app.use(morgan("dev"));
+app.use(
+  session({
+    secret: process.env.COOKIE_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    store: new CokieStore({ mongooseConnection: mongoose.connection })
+  })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
+
 app.use(localsMiddleware);
 
 app.use(routes.home, globalRouter);
