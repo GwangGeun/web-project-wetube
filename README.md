@@ -1,3 +1,3 @@
-# This is my Personal Project ( WeTube )
+# This is my Personal Project 
 
-Cloning Youtube with Vanilla and NodeJS
+Main Skill : VanillaJS and NodeJS
